@@ -128,6 +128,16 @@ export default function ProfileScreen() {
               Helpline: +92 317 4016795
             </ThemedText>
           </ThemedView>
+
+          <ThemedView style={styles.supportCard2ntoLast}>
+            <ThemedText style={styles.supportTitle}>
+              Hey we are also there to help you
+            </ThemedText>
+
+            <ThemedText style={styles.supportContact}>
+              Email: umairhaiderlhr@gmail.com
+            </ThemedText>
+          </ThemedView>
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
@@ -217,7 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    color: "#25403B",
+    color: "#0f5c4e",
     fontSize: 18,
     fontWeight: "700",
     lineHeight: 24,
@@ -268,5 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     marginTop: 12,
+  },
+
+  supportCard2ntoLast: {
+    backgroundColor: "#25403B",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 25,
   },
 });

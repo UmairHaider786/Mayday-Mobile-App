@@ -1,103 +1,178 @@
-import { ScrollView, StyleSheet } from "react-native";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { fetchProviders, type Provider } from "@/services/api";
+
+function ProviderCard({ item }: { item: Provider }) {
+  const initials = item.name
+    .split(" ")
+    .filter((_, i) => i < 2)
+    .map((part) => part[0])
+    .join("");
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={styles.cardTitleBox}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.company}>{item.company.name}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.detail}>City: {item.address.city}</Text>
+      <Text style={styles.detail}>Email: {item.email}</Text>
+      <Text style={styles.detail}>Phone: {item.phone}</Text>
+    </View>
+  );
+}
 
 export default function ExploreScreen() {
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadProviders = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+
+    try {
+      const data = await fetchProviders();
+      setProviders(data);
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.code === "ECONNABORTED") {
+        setError("The request timed out. Please try again.");
+      } else if (axios.isAxiosError(e) && !e.response) {
+        setError("No internet connection. Check your network and retry.");
+      } else {
+        setError("Something went wrong while loading providers.");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProviders();
+  }, []);
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <ThemedView style={styles.hero}>
-          <ThemedText style={styles.brand}>Mayday</ThemedText>
-          <ThemedText style={styles.tagline}>
-            Everything you need, right when you need it.
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.hero}>
+        <Text style={styles.heroTitle}>Service Providers</Text>
+        <Text style={styles.heroSubtitle}>
+          Trusted professionals, loaded live from the web.
+        </Text>
+      </View>
 
-        <ThemedView style={styles.sheet}>
-          <ThemedText style={styles.heading}>About Mayday</ThemedText>
-          <ThemedText style={styles.body}>
-            Mayday is built to keep your day simple and organized. It brings
-            your important tasks together in one calm, clear place, so you can
-            spend less time searching and more time getting things done.
-          </ThemedText>
-
-          <ThemedView style={styles.divider} />
-
-          <ThemedText style={styles.heading}>Our promise</ThemedText>
-          <ThemedText style={styles.body}>
-            Clean design, fast performance, and help that is always one tap
-            away. We keep improving Mayday with every update, because your time
-            matters.
-          </ThemedText>
-        </ThemedView>
-      </ScrollView>
+      <View style={styles.sheet}>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#F26B21" />
+            <Text style={styles.stateText}>Loading providers...</Text>
+          </View>
+        ) : error !== "" ? (
+          <View style={styles.center}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => loadProviders()}
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FlatList
+            data={providers}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => <ProviderCard item={item} />}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={() => loadProviders(true)}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#f26b21",
-  },
-  content: {
-    flexGrow: 1,
-  },
+  screen: { flex: 1, backgroundColor: "#f26b21" },
+
   hero: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 28,
-    paddingTop: 40,
-    paddingBottom: 32,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === "web" ? 100 : 24,
+    paddingBottom: 24,
   },
-  brand: {
-    fontSize: 44,
-    lineHeight: 52,
+  heroTitle: {
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: 0.5,
   },
-  tagline: {
-    fontSize: 18,
-    lineHeight: 26,
-    color: "#FFE8D6",
-    marginTop: 10,
-    maxWidth: 300,
-  },
+  heroSubtitle: { fontSize: 15, color: "#FFE8D6", marginTop: 4 },
+
   sheet: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#eef2f3",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    paddingHorizontal: 28,
-    paddingTop: 36,
-    paddingBottom: 120,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  heading: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: "700",
-    color: "#25403B",
-    marginBottom: 10,
+  listContent: { paddingBottom: 120 },
+
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  stateText: { color: "#6B7280", fontSize: 15, marginTop: 12 },
+  errorText: {
+    color: "#B91C1C",
+    fontSize: 15,
+    textAlign: "center",
+    paddingHorizontal: 24,
   },
-  body: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: "#4B5563",
+  retryButton: {
+    backgroundColor: "#F26B21",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
   },
-  divider: {
-    height: 3,
-    backgroundColor: "#0bbaf0c7",
-    marginVertical: 20,
-  },
+  retryText: { color: "#FFFFFF", fontWeight: "800", fontSize: 15 },
+
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 14,
   },
+  cardTop: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#187564",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { color: "#FFFFFF", fontWeight: "800", fontSize: 17 },
+  cardTitleBox: { flex: 1, marginLeft: 12 },
+  name: { fontSize: 17, fontWeight: "700", color: "#25403B" },
+  company: { fontSize: 13, color: "#F26B21", fontWeight: "600", marginTop: 2 },
+  detail: { fontSize: 14, color: "#4B5563", marginTop: 3 },
 });
